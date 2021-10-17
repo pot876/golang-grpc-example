@@ -1,0 +1,15 @@
+syntax = "proto3";
+option go_package = "fibo-prj/interanl/api";
+
+service Fibo {
+  rpc GetFiboNumbers (FiboRequest) returns (FiboReply) {}
+}
+
+message FiboRequest {
+  uint64 from = 1;
+  uint64 to = 2;
+}
+
+message FiboReply {
+  repeated string numbers = 1;
+}
