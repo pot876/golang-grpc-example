@@ -23,11 +23,7 @@ func addFiboHandler(r *gin.RouterGroup, fiboGetter func(fr, to uint64) ([]string
 
 		var bounds [2]uint64
 		if !extractBoundHelper(boundsString, &bounds) {
-			c.String(http.StatusBadRequest, "bad bounds format, expected: /fibo/0-45")
-			return
-		}
-		if bounds[1] <= bounds[0] {
-			c.String(http.StatusBadRequest, "bad range bounds, expected: left < right")
+			c.String(http.StatusBadRequest, "bad bounds format, expected url template: /fibo/{uint64}-{uint64}")
 			return
 		}
 

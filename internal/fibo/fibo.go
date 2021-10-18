@@ -1,20 +1,11 @@
 package fibo
 
 import (
+	"encoding/base32"
+	"encoding/binary"
 	"fmt"
 	"math/big"
 )
-
-// type FiboCache interface {
-// 	// get returns: 1) index of first fibo, 2) continious fibo values with length <= n
-// 	// result length < n if:
-// 	// a) there are values in range but not first
-// 	// b) there are values in range but not last
-// 	// c) there are values in range but not in between, then only first part is returned
-// 	get(anchor uint64, n int) (uint64, []string, error)
-// 	set(anchor uint64, values []string) error
-// 	getLeft(anchor uint64, n int) (uint64, []string, error)
-// }
 
 func FromTo(fr, to uint64) ([]string, error) {
 	if to <= fr {
@@ -27,7 +18,7 @@ func FromTo(fr, to uint64) ([]string, error) {
 	var result = make([]string, to-fr)
 
 	if fr < 2 {
-		for i := fr; i < 2; i++ {
+		for i := fr; i < min(2, fr+(to-fr)); i++ {
 			result[resultInsertIndex] = fmt.Sprintf("%d", i)
 			resultInsertIndex++
 		}
@@ -50,4 +41,18 @@ func FiboIterator(a, b *big.Int) func() *big.Int {
 		a, b = b, a
 		return b.Add(a, b)
 	}
+}
+
+func keyAsString(key uint64) string {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, uint64(key))
+
+	return base32.HexEncoding.EncodeToString(b)
+}
+func min(a, b uint64) uint64 {
+	if a < b {
+		return a
+	}
+
+	return b
 }

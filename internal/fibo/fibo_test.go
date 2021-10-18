@@ -6,6 +6,19 @@ import (
 )
 
 func TestFromTo(t *testing.T) {
+	fromTo(t, 0, 1, []string{"0"})
+	fromTo(t, 0, 2, []string{"0", "1"})
+	fromTo(t, 0, 3, []string{"0", "1", "1"})
+
+	fromTo(t, 1, 2, []string{"1"})
+	fromTo(t, 1, 3, []string{"1", "1"})
+
+	fromTo(t, 2, 3, []string{"1"})
+	fromTo(t, 2, 4, []string{"1", "2"})
+
+	fromTo(t, 3, 4, []string{"2"})
+	fromTo(t, 3, 5, []string{"2", "3"})
+
 	fromTo(t, 0, 5, []string{"0", "1", "1", "2", "3"})
 	fromTo(t, 1, 5, []string{"1", "1", "2", "3"})
 	fromTo(t, 2, 5, []string{"1", "2", "3"})

@@ -3,6 +3,7 @@ option go_package = "fibo-prj/interanl/api";
 
 service Fibo {
   rpc GetFiboNumbers (FiboRequest) returns (FiboReply) {}
+  rpc GetFiboNumbersStream (FiboRequest) returns (stream FiboReply) {}
 }
 
 message FiboRequest {

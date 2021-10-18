@@ -36,7 +36,14 @@ curl -i -X GET "${FIBO_HTTP_HOST}/fibo/50-100"
 brew install grpcurl
 
 export FIBO_GRPC_HOST=localhost:8078
-grpcurl -plaintext -import-path ./ -proto api_grpc.proto -d @ ${FIBO_GRPC_HOST} Fibo/GetFiboNumbers <<EOM
+
+grpcurl -plaintext -import-path ./ -proto api_grpc.proto -d @ ${FIBO_GRPC_HOST} \
+Fibo/GetFiboNumbers <<EOM
+{ "from": 2, "to": 5 }
+EOM
+
+grpcurl -plaintext -import-path ./ -proto api_grpc.proto -d @ ${FIBO_GRPC_HOST} \
+Fibo/GetFiboNumbersStream <<EOM
 { "from": 2, "to": 5 }
 EOM
 ```
