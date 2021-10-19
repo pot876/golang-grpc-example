@@ -19,8 +19,10 @@ func ExampleUsage() {
 	}
 
 	// Output:
-	// KEY          TYPE      DEFAULT    REQUIRED    DESCRIPTION /
-	// HTTP_ADDR    String    :8077                   /
-	// GRPC_ADDR    String    :8078                   /
+	// KEY                    TYPE        DEFAULT    REQUIRED    DESCRIPTION /
+	// HTTP_ADDR              String      :8077                   /
+	// GRPC_ADDR              String      :8078                   /
+	// HTTP_SHUTDOWN_LIMIT    Duration    5s                      /
+	// GRPC_SHUTDOWN_LIMIT    Duration    5s                      /
 	//  /
 }

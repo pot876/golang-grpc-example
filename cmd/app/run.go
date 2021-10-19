@@ -25,8 +25,6 @@ func f0() int {
 	signal.Notify(systemStopSignals, syscall.SIGINT, syscall.SIGTERM)
 
 	var wg sync.WaitGroup
-	wg.Add(2)
-
 	grpcRunHelper(ctx, cancel, &wg)
 	httpRunHelper(ctx, cancel, &wg)
 
@@ -38,16 +36,16 @@ func f0() int {
 	}
 
 	wg.Wait()
-
 	return 0
 }
 
 func grpcRunHelper(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) {
+	wg.Add(1)
 	go func() {
 		grpcServer := grpc.NewServer()
 		api.RegisterFiboServer(grpcServer, &api.GrpcImplementation{})
 
-		if err := runGrpcServer(ctx, config.Cfg.GrpcAddr, grpcServer, 5*time.Second); err != nil {
+		if err := runGrpcServer(ctx, config.Cfg.GrpcAddr, grpcServer, config.Cfg.GrpcShutdownTime); err != nil {
 			logrus.Errorf("grpc server finished with err: [%v]", err)
 		}
 
@@ -56,8 +54,9 @@ func grpcRunHelper(ctx context.Context, cancel context.CancelFunc, wg *sync.Wait
 	}()
 }
 func httpRunHelper(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) {
+	wg.Add(1)
 	go func() {
-		if err := runGinServer(ctx, config.Cfg.HttpAddr, api.CreateRestGin(), 5*time.Second); err != nil {
+		if err := runGinServer(ctx, config.Cfg.HttpAddr, api.CreateRestGin(), config.Cfg.HttpShutdownTime); err != nil {
 			logrus.Errorf("http server finished with err: [%v]", err)
 		}
 
@@ -79,27 +78,25 @@ func runGinServer(ctx context.Context, addr string, ginEngine *gin.Engine, sdTim
 	var runError error
 	var sdError error
 	go func() {
-		logrus.Infof("starting  gin server, addr: [%s]", addr)
+		logrus.Infof("starting gin server, addr: [%s]", addr)
 		runErrorChan <- srv.ListenAndServe()
 	}()
 
-	{
+	select {
+	case <-ctx.Done():
+		sdContext, cancel := context.WithTimeout(context.Background(), sdTimeout)
+		defer cancel()
 
-		select {
-		case <-ctx.Done():
-			sdContext, cancel := context.WithTimeout(context.Background(), sdTimeout)
-			defer cancel()
-
-			sdError = srv.Shutdown(sdContext)
-		case runError = <-runErrorChan:
+		if sdError = srv.Shutdown(sdContext); sdError == context.DeadlineExceeded {
+			logrus.Warnf("http server shutdown deadline exceeded")
+			sdError = nil
 		}
-
+	case runError = <-runErrorChan:
 	}
 
 	if sdError != nil || (runError != nil && runError != http.ErrServerClosed) {
 		return fmt.Errorf("runError: [%v], sdError: [%v]", runError, sdError)
 	}
-
 	return nil
 }
 
@@ -117,24 +114,22 @@ func runGrpcServer(ctx context.Context, addr string, server *grpc.Server, sdTime
 		runErrorChan <- server.Serve(lis)
 	}()
 
-	{
-		select {
-		case <-ctx.Done():
-			sdContext, cancel := context.WithTimeout(context.Background(), sdTimeout)
-			defer cancel()
+	select {
+	case <-ctx.Done():
+		sdContext, cancel := context.WithTimeout(context.Background(), sdTimeout)
+		defer cancel()
 
-			go func() {
-				server.GracefulStop()
-				cancel()
-			}()
+		go func() {
+			server.GracefulStop()
+			cancel()
+		}()
 
-			<-sdContext.Done()
-			if sdContext.Err() == context.DeadlineExceeded {
-				sdError = context.DeadlineExceeded
-			}
-		case runError = <-runErrorChan:
+		<-sdContext.Done()
+		if sdContext.Err() == context.DeadlineExceeded {
+			logrus.Warnf("grpc server shutdown deadline exceeded")
+			// sdError = context.DeadlineExceeded
 		}
-
+	case runError = <-runErrorChan:
 	}
 
 	if sdError != nil || runError != nil {
