@@ -35,7 +35,7 @@ func addFiboHandler(r *gin.RouterGroup, fiboGetter func(fr, to uint64) ([]string
 			return
 		}
 
-		c.JSON(http.StatusAccepted, result)
+		c.JSON(http.StatusOK, result)
 	}
 	r.GET("/fibo/:bounds", fiboHandler)
 }

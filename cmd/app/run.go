@@ -66,7 +66,7 @@ func httpRunHelper(ctx context.Context, cancel context.CancelFunc, wg *sync.Wait
 	}()
 }
 
-func runGinServer(_ctx context.Context, addr string, ginEngine *gin.Engine, sdTimeout time.Duration) error {
+func runGinServer(ctx context.Context, addr string, ginEngine *gin.Engine, sdTimeout time.Duration) error {
 	srv := &http.Server{
 		Addr:           addr,
 		Handler:        ginEngine,
@@ -75,23 +75,25 @@ func runGinServer(_ctx context.Context, addr string, ginEngine *gin.Engine, sdTi
 		MaxHeaderBytes: 1 << 20,
 	}
 
-	ctx, cancel := context.WithCancel(_ctx)
-	defer cancel()
-
+	var runErrorChan = make(chan error, 1)
 	var runError error
 	var sdError error
 	go func() {
 		logrus.Infof("starting  gin server, addr: [%s]", addr)
-		runError = srv.ListenAndServe()
-		cancel()
+		runErrorChan <- srv.ListenAndServe()
 	}()
 
 	{
-		<-ctx.Done()
-		sdContext, cancel := context.WithTimeout(context.Background(), sdTimeout)
-		defer cancel()
 
-		sdError = srv.Shutdown(sdContext)
+		select {
+		case <-ctx.Done():
+			sdContext, cancel := context.WithTimeout(context.Background(), sdTimeout)
+			defer cancel()
+
+			sdError = srv.Shutdown(sdContext)
+		case runError = <-runErrorChan:
+		}
+
 	}
 
 	if sdError != nil || (runError != nil && runError != http.ErrServerClosed) {
@@ -101,36 +103,38 @@ func runGinServer(_ctx context.Context, addr string, ginEngine *gin.Engine, sdTi
 	return nil
 }
 
-func runGrpcServer(_ctx context.Context, addr string, server *grpc.Server, sdTimeout time.Duration) error {
+func runGrpcServer(ctx context.Context, addr string, server *grpc.Server, sdTimeout time.Duration) error {
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to listen: %v", err)
 	}
 
-	ctx, cancel := context.WithCancel(_ctx)
-	defer cancel()
-
+	var runErrorChan = make(chan error, 1)
 	var runError error
 	var sdError error
 	go func() {
 		logrus.Infof("starting grpc server, addr: [%s]", addr)
-		runError = server.Serve(lis)
-		cancel()
+		runErrorChan <- server.Serve(lis)
 	}()
+
 	{
-		<-ctx.Done()
-		sdContext, cancel := context.WithTimeout(context.Background(), sdTimeout)
-		defer cancel()
+		select {
+		case <-ctx.Done():
+			sdContext, cancel := context.WithTimeout(context.Background(), sdTimeout)
+			defer cancel()
 
-		go func() {
-			server.GracefulStop()
-			cancel()
-		}()
+			go func() {
+				server.GracefulStop()
+				cancel()
+			}()
 
-		<-sdContext.Done()
-		if sdContext.Err() == context.DeadlineExceeded {
-			sdError = context.DeadlineExceeded
+			<-sdContext.Done()
+			if sdContext.Err() == context.DeadlineExceeded {
+				sdError = context.DeadlineExceeded
+			}
+		case runError = <-runErrorChan:
 		}
+
 	}
 
 	if sdError != nil || runError != nil {

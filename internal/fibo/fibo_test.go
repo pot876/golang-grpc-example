@@ -30,10 +30,7 @@ func TestFromTo(t *testing.T) {
 
 func fromTo(t *testing.T, fr uint64, to uint64, expected []string) {
 	result, _ := FromTo(fr, to)
-	e := eq(result, expected)
-
-	if !e {
-
+	if !eq(result, expected) {
 		t.Logf("range: %d-%d, got: %v, expected:%v", fr, to, result, expected)
 		t.FailNow()
 	}
