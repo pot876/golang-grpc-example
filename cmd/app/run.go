@@ -75,8 +75,7 @@ func runGinServer(ctx context.Context, addr string, ginEngine *gin.Engine, sdTim
 	}
 
 	var runErrorChan = make(chan error, 1)
-	var runError error
-	var sdError error
+	var runError, sdError error
 	go func() {
 		logrus.Infof("starting gin server, addr: [%s]", addr)
 		runErrorChan <- srv.ListenAndServe()
@@ -107,8 +106,7 @@ func runGrpcServer(ctx context.Context, addr string, server *grpc.Server, sdTime
 	}
 
 	var runErrorChan = make(chan error, 1)
-	var runError error
-	var sdError error
+	var runError, sdError error
 	go func() {
 		logrus.Infof("starting grpc server, addr: [%s]", addr)
 		runErrorChan <- server.Serve(lis)
@@ -116,18 +114,12 @@ func runGrpcServer(ctx context.Context, addr string, server *grpc.Server, sdTime
 
 	select {
 	case <-ctx.Done():
-		sdContext, cancel := context.WithTimeout(context.Background(), sdTimeout)
-		defer cancel()
+		go server.GracefulStop()
 
-		go func() {
-			server.GracefulStop()
-			cancel()
-		}()
-
-		<-sdContext.Done()
-		if sdContext.Err() == context.DeadlineExceeded {
+		select {
+		case <-time.After(sdTimeout):
 			logrus.Warnf("grpc server shutdown deadline exceeded")
-			// sdError = context.DeadlineExceeded
+		case runError = <-runErrorChan:
 		}
 	case runError = <-runErrorChan:
 	}
