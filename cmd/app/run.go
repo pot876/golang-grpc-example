@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"fibo-prj/internal/api"
-	"fibo-prj/internal/config"
 	"fmt"
 	"net"
 	"net/http"
@@ -13,6 +11,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pot876/golang-grpc-example/internal/api"
+	"github.com/pot876/golang-grpc-example/internal/api/proto"
+	"github.com/pot876/golang-grpc-example/internal/config"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -21,12 +23,12 @@ import (
 func f0() int {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	systemStopSignals := make(chan os.Signal, 1)
-	signal.Notify(systemStopSignals, syscall.SIGINT, syscall.SIGTERM)
-
 	var wg sync.WaitGroup
 	grpcRunHelper(ctx, cancel, &wg)
 	httpRunHelper(ctx, cancel, &wg)
+
+	systemStopSignals := make(chan os.Signal, 1)
+	signal.Notify(systemStopSignals, syscall.SIGINT, syscall.SIGTERM)
 
 	select {
 	case <-systemStopSignals:
@@ -40,26 +42,38 @@ func f0() int {
 }
 
 func grpcRunHelper(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) {
-	wg.Add(1)
-	go func() {
-		grpcServer := grpc.NewServer()
-		api.RegisterFiboServer(grpcServer, &api.GrpcImplementation{})
-
-		if err := runGrpcServer(ctx, config.Cfg.GrpcAddr, grpcServer, config.Cfg.GrpcShutdownTime); err != nil {
-			logrus.Errorf("grpc server finished with err: [%v]", err)
+	f := func(ctx context.Context) {
+		lis, err := net.Listen("tcp", config.Cfg.GrpcAddr)
+		if err != nil {
+			logrus.Errorf("net.Listen err:[%v]", err)
+			return
 		}
 
-		cancel()
-		wg.Done()
-	}()
+		grpcServer := grpc.NewServer()
+		proto.RegisterFiboServer(grpcServer, &api.GrpcImplementation{})
+
+		logrus.Infof("starting grpc server, addr: [%s]", config.Cfg.GrpcAddr)
+		if err := runGrpcServer(ctx, lis, grpcServer, config.Cfg.GrpcShutdownTime); err != nil {
+			logrus.Errorf("grpc server finished with err: [%v]", err)
+		}
+	}
+
+	runAdopter(ctx, cancel, wg, f)
 }
+
 func httpRunHelper(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) {
-	wg.Add(1)
-	go func() {
+	f := func(ctx context.Context) {
 		if err := runGinServer(ctx, config.Cfg.HttpAddr, api.CreateRestGin(), config.Cfg.HttpShutdownTime); err != nil {
 			logrus.Errorf("http server finished with err: [%v]", err)
 		}
+	}
+	runAdopter(ctx, cancel, wg, f)
+}
 
+func runAdopter(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, f func(context.Context)) {
+	wg.Add(1)
+	go func() {
+		f(ctx)
 		cancel()
 		wg.Done()
 	}()
@@ -99,16 +113,10 @@ func runGinServer(ctx context.Context, addr string, ginEngine *gin.Engine, sdTim
 	return nil
 }
 
-func runGrpcServer(ctx context.Context, addr string, server *grpc.Server, sdTimeout time.Duration) error {
-	lis, err := net.Listen("tcp", addr)
-	if err != nil {
-		return fmt.Errorf("failed to listen: %v", err)
-	}
-
+func runGrpcServer(ctx context.Context, lis net.Listener, server *grpc.Server, sdTimeout time.Duration) error {
 	var runErrorChan = make(chan error, 1)
 	var runError, sdError error
 	go func() {
-		logrus.Infof("starting grpc server, addr: [%s]", addr)
 		runErrorChan <- server.Serve(lis)
 	}()
 

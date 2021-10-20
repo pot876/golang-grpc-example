@@ -1,10 +1,11 @@
 package api
 
 import (
-	"fibo-prj/internal/fibo"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/pot876/golang-grpc-example/internal/fibo"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"

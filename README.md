@@ -1,6 +1,6 @@
 # Golang grpc, http example
 
-Service returns fibonacci numbers from requested range
+Server returns fibonacci numbers from requested range
 
 
 ### Generate grpc:
@@ -10,7 +10,7 @@ brew install protoc-gen-go-grpc
 
 protoc --go_out=./internal/api --go_opt=paths=source_relative \
     --go-grpc_out=./internal/api --go-grpc_opt=paths=source_relative \
-    api_grpc.proto
+    proto/fibo.proto
 ```
 
 ### deployment:
@@ -37,12 +37,12 @@ brew install grpcurl
 
 export FIBO_GRPC_HOST=localhost:8078
 
-grpcurl -plaintext -import-path ./ -proto api_grpc.proto -d @ ${FIBO_GRPC_HOST} \
+grpcurl -plaintext -import-path ./ -proto proto/fibo.proto -d @ ${FIBO_GRPC_HOST} \
 Fibo/GetFiboNumbers <<EOM
 { "from": 2, "to": 5 }
 EOM
 
-grpcurl -plaintext -import-path ./ -proto api_grpc.proto -d @ ${FIBO_GRPC_HOST} \
+grpcurl -plaintext -import-path ./ -proto proto/fibo.proto -d @ ${FIBO_GRPC_HOST} \
 Fibo/GetFiboNumbersStream <<EOM
 { "from": 2, "to": 5 }
 EOM

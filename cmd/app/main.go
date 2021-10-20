@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"fibo-prj/internal/config"
+	"github.com/pot876/golang-grpc-example/internal/config"
 
 	"github.com/sirupsen/logrus"
 )

@@ -1,4 +1,4 @@
-module fibo-prj
+module github.com/pot876/golang-grpc-example
 
 go 1.17
 

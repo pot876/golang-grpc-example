@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "fibo-prj/interanl/api";
+option go_package = "fibo-prj/interanl/api/proto";
 
 service Fibo {
   rpc GetFiboNumbers (FiboRequest) returns (FiboReply) {}
