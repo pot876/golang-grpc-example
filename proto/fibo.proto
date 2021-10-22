@@ -3,14 +3,20 @@ option go_package = "fibo-prj/interanl/api/proto";
 
 service Fibo {
   rpc GetFiboNumbers (FiboRequest) returns (FiboReply) {}
-  rpc GetFiboNumbersStream (FiboRequest) returns (stream FiboReply) {}
+  rpc GetFiboNumbersStream (FiboStreamRequest) returns (stream FiboStreamReply) {}
 }
 
 message FiboRequest {
   uint64 from = 1;
   uint64 to = 2;
 }
-
 message FiboReply {
   repeated string numbers = 1;
+}
+
+message FiboStreamRequest {
+  uint64 n = 1;
+}
+message FiboStreamReply {
+  string number = 1;
 }

@@ -19,7 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FiboClient interface {
 	GetFiboNumbers(ctx context.Context, in *FiboRequest, opts ...grpc.CallOption) (*FiboReply, error)
-	GetFiboNumbersStream(ctx context.Context, in *FiboRequest, opts ...grpc.CallOption) (Fibo_GetFiboNumbersStreamClient, error)
+	GetFiboNumbersStream(ctx context.Context, in *FiboStreamRequest, opts ...grpc.CallOption) (Fibo_GetFiboNumbersStreamClient, error)
 }
 
 type fiboClient struct {
@@ -39,7 +39,7 @@ func (c *fiboClient) GetFiboNumbers(ctx context.Context, in *FiboRequest, opts .
 	return out, nil
 }
 
-func (c *fiboClient) GetFiboNumbersStream(ctx context.Context, in *FiboRequest, opts ...grpc.CallOption) (Fibo_GetFiboNumbersStreamClient, error) {
+func (c *fiboClient) GetFiboNumbersStream(ctx context.Context, in *FiboStreamRequest, opts ...grpc.CallOption) (Fibo_GetFiboNumbersStreamClient, error) {
 	stream, err := c.cc.NewStream(ctx, &Fibo_ServiceDesc.Streams[0], "/Fibo/GetFiboNumbersStream", opts...)
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func (c *fiboClient) GetFiboNumbersStream(ctx context.Context, in *FiboRequest, 
 }
 
 type Fibo_GetFiboNumbersStreamClient interface {
-	Recv() (*FiboReply, error)
+	Recv() (*FiboStreamReply, error)
 	grpc.ClientStream
 }
 
@@ -63,8 +63,8 @@ type fiboGetFiboNumbersStreamClient struct {
 	grpc.ClientStream
 }
 
-func (x *fiboGetFiboNumbersStreamClient) Recv() (*FiboReply, error) {
-	m := new(FiboReply)
+func (x *fiboGetFiboNumbersStreamClient) Recv() (*FiboStreamReply, error) {
+	m := new(FiboStreamReply)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (x *fiboGetFiboNumbersStreamClient) Recv() (*FiboReply, error) {
 // for forward compatibility
 type FiboServer interface {
 	GetFiboNumbers(context.Context, *FiboRequest) (*FiboReply, error)
-	GetFiboNumbersStream(*FiboRequest, Fibo_GetFiboNumbersStreamServer) error
+	GetFiboNumbersStream(*FiboStreamRequest, Fibo_GetFiboNumbersStreamServer) error
 	mustEmbedUnimplementedFiboServer()
 }
 
@@ -87,7 +87,7 @@ type UnimplementedFiboServer struct {
 func (UnimplementedFiboServer) GetFiboNumbers(context.Context, *FiboRequest) (*FiboReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFiboNumbers not implemented")
 }
-func (UnimplementedFiboServer) GetFiboNumbersStream(*FiboRequest, Fibo_GetFiboNumbersStreamServer) error {
+func (UnimplementedFiboServer) GetFiboNumbersStream(*FiboStreamRequest, Fibo_GetFiboNumbersStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetFiboNumbersStream not implemented")
 }
 func (UnimplementedFiboServer) mustEmbedUnimplementedFiboServer() {}
@@ -122,7 +122,7 @@ func _Fibo_GetFiboNumbers_Handler(srv interface{}, ctx context.Context, dec func
 }
 
 func _Fibo_GetFiboNumbersStream_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(FiboRequest)
+	m := new(FiboStreamRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func _Fibo_GetFiboNumbersStream_Handler(srv interface{}, stream grpc.ServerStrea
 }
 
 type Fibo_GetFiboNumbersStreamServer interface {
-	Send(*FiboReply) error
+	Send(*FiboStreamReply) error
 	grpc.ServerStream
 }
 
@@ -138,7 +138,7 @@ type fiboGetFiboNumbersStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *fiboGetFiboNumbersStreamServer) Send(m *FiboReply) error {
+func (x *fiboGetFiboNumbersStreamServer) Send(m *FiboStreamReply) error {
 	return x.ServerStream.SendMsg(m)
 }
 

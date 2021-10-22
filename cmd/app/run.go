@@ -27,11 +27,8 @@ func f0() int {
 	grpcRunHelper(ctx, cancel, &wg)
 	httpRunHelper(ctx, cancel, &wg)
 
-	systemStopSignals := make(chan os.Signal, 1)
-	signal.Notify(systemStopSignals, syscall.SIGINT, syscall.SIGTERM)
-
 	select {
-	case <-systemStopSignals:
+	case <-onStop():
 		logrus.Infof("stop signal recieved, stopping...")
 		cancel()
 	case <-ctx.Done():
@@ -42,6 +39,8 @@ func f0() int {
 }
 
 func grpcRunHelper(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) {
+	logrus.Infof("starting grpc server, addr: [%s]", config.Cfg.GrpcAddr)
+
 	f := func(ctx context.Context) {
 		lis, err := net.Listen("tcp", config.Cfg.GrpcAddr)
 		if err != nil {
@@ -52,7 +51,6 @@ func grpcRunHelper(ctx context.Context, cancel context.CancelFunc, wg *sync.Wait
 		grpcServer := grpc.NewServer()
 		proto.RegisterFiboServer(grpcServer, &api.GrpcImplementation{})
 
-		logrus.Infof("starting grpc server, addr: [%s]", config.Cfg.GrpcAddr)
 		if err := runGrpcServer(ctx, lis, grpcServer, config.Cfg.GrpcShutdownTime); err != nil {
 			logrus.Errorf("grpc server finished with err: [%v]", err)
 		}
@@ -62,6 +60,8 @@ func grpcRunHelper(ctx context.Context, cancel context.CancelFunc, wg *sync.Wait
 }
 
 func httpRunHelper(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) {
+	logrus.Infof("starting gin server, addr: [%s]", config.Cfg.HttpAddr)
+
 	f := func(ctx context.Context) {
 		if err := runGinServer(ctx, config.Cfg.HttpAddr, api.CreateRestGin(), config.Cfg.HttpShutdownTime); err != nil {
 			logrus.Errorf("http server finished with err: [%v]", err)
@@ -91,7 +91,6 @@ func runGinServer(ctx context.Context, addr string, ginEngine *gin.Engine, sdTim
 	var runErrorChan = make(chan error, 1)
 	var runError, sdError error
 	go func() {
-		logrus.Infof("starting gin server, addr: [%s]", addr)
 		runErrorChan <- srv.ListenAndServe()
 	}()
 
@@ -136,4 +135,10 @@ func runGrpcServer(ctx context.Context, lis net.Listener, server *grpc.Server, s
 		return fmt.Errorf("runError: [%v], sdError: [%v]", runError, sdError)
 	}
 	return nil
+}
+
+func onStop() <-chan os.Signal {
+	systemStopSignals := make(chan os.Signal, 1)
+	signal.Notify(systemStopSignals, syscall.SIGINT, syscall.SIGTERM)
+	return systemStopSignals
 }

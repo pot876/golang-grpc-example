@@ -3,6 +3,7 @@ package api
 import (
 	context "context"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/pot876/golang-grpc-example/internal/api/proto"
@@ -25,14 +26,30 @@ func (q *GrpcImplementation) GetFiboNumbers(ctx context.Context, in *proto.FiboR
 	}, nil
 }
 
-func (q *GrpcImplementation) GetFiboNumbersStream(in *proto.FiboRequest, stream proto.Fibo_GetFiboNumbersStreamServer) error {
-	// TODO
-	for i := 0; i < 1000; i++ {
-		if err := stream.Send(&proto.FiboReply{Numbers: []string{fmt.Sprintf("%d", i)}}); err != nil {
+func (q *GrpcImplementation) GetFiboNumbersStream(in *proto.FiboStreamRequest, stream proto.Fibo_GetFiboNumbersStreamServer) error {
+	for i := uint64(0); i < min(2, in.N); i++ {
+		time.Sleep(time.Millisecond * 100)
+		if err := stream.Send(&proto.FiboStreamReply{Number: fmt.Sprintf("%d", i)}); err != nil {
 			logrus.Warnf("GetFiboNumbersStream send err: [%v]", err)
 			return nil
 		}
-		time.Sleep(time.Second)
+	}
+
+	fi := fibo.FiboIterator(big.NewInt(0), big.NewInt(1))
+	for i := uint64(2); i < in.N; i++ {
+		time.Sleep(time.Millisecond * 100)
+		if err := stream.Send(&proto.FiboStreamReply{Number: fi().String()}); err != nil {
+			logrus.Warnf("GetFiboNumbersStream send err: [%v]", err)
+			return nil
+		}
 	}
 	return nil
+}
+
+func min(a, b uint64) uint64 {
+	if a < b {
+		return a
+	}
+
+	return b
 }

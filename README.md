@@ -44,6 +44,6 @@ EOM
 
 grpcurl -plaintext -import-path ./ -proto proto/fibo.proto -d @ ${FIBO_GRPC_HOST} \
 Fibo/GetFiboNumbersStream <<EOM
-{ "from": 2, "to": 5 }
+{ "n": 20 }
 EOM
 ```
